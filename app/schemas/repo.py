@@ -1,9 +1,9 @@
-from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional, Literal, Union
+from pydantic import BaseModel,  HttpUrl
+from typing import Optional
 
 
-class RepoRequest(BaseModel):
-    url: str
+class RepoSummaryRequest(BaseModel):
+    github_url: HttpUrl
 
 
 class RepositoryData(BaseModel):
