@@ -1,18 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
 from app.services.github_services import GitHubService
-from app.schemas.repo import RepositoryData
+from app.schemas.repo import RepoSummaryRequest
 from app.utils.parse_readme_sections import parse_readme_sections
-from typing import Annotated
 
 
 router = APIRouter(prefix="/summarize", tags=["summarize"])
 
 
-@router.post("", response_model=str)
-async def analyze_repo_by_url(url: Annotated[str, Form()], github_service: GitHubService = Depends()):
+@router.post("", )
+async def summarize_repo_by_url(request: RepoSummaryRequest, github_service: GitHubService = Depends()):
     try:
 
-        parts = url.split("/")
+        github_url = str(request.github_url)
+
+        parts = github_url.split("/")
         owner = parts[-2]
         repo = parts[-1]
         repo_info = await github_service.get_repo_info(owner, repo)
@@ -27,6 +28,6 @@ async def analyze_repo_by_url(url: Annotated[str, Form()], github_service: GitHu
             f"It currently has {repo_info.get('stargazers_count', 0)} stars on GitHub. "
             f"{repo_info.get('description') or ''}"
         )
-        return summary
+        return repo_info
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

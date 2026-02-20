@@ -1,12 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import analyze_repo
+from app.api import summarize_repo
 
 
 def create_app() -> FastAPI:
 
     app = FastAPI(
-        title="GitHub repository Reader",
+        title="GitHub repository Analyzer",
         description="RESTful API service that takes a GitHub repository URL and returns a human-readable summary of the project",
         version="0.0.1"
 
@@ -22,7 +22,7 @@ def create_app() -> FastAPI:
     )
 
     # API routes
-    app.include_router(analyze_repo.router)
+    app.include_router(summarize_repo.router)
 
     return app
 
