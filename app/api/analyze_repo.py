@@ -5,10 +5,10 @@ from app.utils.parse_readme_sections import parse_readme_sections
 from typing import Annotated
 
 
-router = APIRouter(prefix="/analyze", tags=["analyze"])
+router = APIRouter(prefix="/summarize", tags=["summarize"])
 
 
-@router.post("/", response_model=str)
+@router.post("", response_model=str)
 async def analyze_repo_by_url(url: Annotated[str, Form()], github_service: GitHubService = Depends()):
     try:
 
