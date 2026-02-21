@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Form
+from fastapi import APIRouter, Depends, HTTPException
 from app.services.github_services import GitHubService
 from app.schemas.repo import RepoSummaryRequest
-from app.utils.parse_readme_sections import parse_readme_sections
+
+from app.utils.gather_repo_context import gather_repo_context
+from app.services.llm_services import LLMService
 
 
 router = APIRouter(prefix="/summarize", tags=["summarize"])
@@ -13,21 +15,20 @@ async def summarize_repo_by_url(request: RepoSummaryRequest, github_service: Git
 
         github_url = str(request.github_url)
 
-        parts = github_url.split("/")
+        github_url = str(request.github_url)
+        parts = github_url.rstrip('/').split("/")
         owner = parts[-2]
         repo = parts[-1]
-        repo_info = await github_service.get_repo_info(owner, repo)
 
-        if not repo_info:
-            raise HTTPException(status_code=404, detail="Repository not found")
-        readme_content = await github_service.get_readme(owner, repo)
-        summary = (
-            f"{repo_info.get('name')} is a "
-            f"{repo_info.get('language', 'software')} project developed by "
-            f"{repo_info.get('owner', {}).get('login')}. "
-            f"It currently has {repo_info.get('stargazers_count', 0)} stars on GitHub. "
-            f"{repo_info.get('description') or ''}"
-        )
-        return repo_info
+        # Gather Repo context
+        repo_context = await gather_repo_context(github_service, owner, repo)
+
+        # Initialize LLM
+        llm_service = LLMService()
+
+        # Get AI-generated summary
+        summary_data = await llm_service.analyze_repository(repo_context)
+
+        return summary_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
