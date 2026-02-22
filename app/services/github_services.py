@@ -1,6 +1,7 @@
 import httpx
 import base64
 import os
+from app.utils.github_api_error import GitHubAPIError
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,42 +24,50 @@ class GitHubService:
 
     async def get_repo_info(self, owner: str, repo: str):
         url = f"/repos/{owner}/{repo}"
-        response = await self.client.get(url)
-
-        if response.status_code == 404:
-            return None
-
-        if response.status_code == 403:
-            raise Exception(response.json().get("message", "Forbidden"))
-
-        response.raise_for_status()
-
-        return response.json()
+        try:
+            response = await self.client.get(url)
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            raise GitHubAPIError(
+                f"GitHub API error: {e.response.status_code}", status_code=e.response.status_code, response_data=e.response.json() if e.response.text else None)
+        except Exception as e:
+            raise GitHubAPIError(
+                f"Failed to fetch repository info: {str(e)}", status_code=None, response_data=None)
 
     async def get_readme(self, owner: str, repo: str):
-        url = f"/repos/{owner}/{repo}/readme"
-        response = await self.client.get(url)
+        try:
+            url = f"/repos/{owner}/{repo}/readme"
+            response = await self.client.get(url)
 
-        if response.status_code != 200:
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            data = response.json()
+            content = data.get("content")
+            if content:
+                decoded_content = base64.b64decode(content).decode("utf-8")
+                return decoded_content
             return None
-
-        data = response.json()
-        content = data.get("content")
-        if content:
-            decoded_content = base64.b64decode(content).decode("utf-8")
-            return decoded_content
-        return None
+        except Exception as e:
+            raise GitHubAPIError(
+                f"Failed to fetch README: {str(e)}", status_code=response.status_code, response_data=response.json())
 
     async def get_repo_tree(self, owner: str, repo: str, recursive: bool = False) -> list:
         """Get repository file structure"""
-        url = f"/repos/{owner}/{repo}/git/trees/main"
-        if recursive:
-            url += "?recursive=1"
+        try:
 
-        response = await self.client.get(url)
-        if response.status_code == 200:
-            return response.json().get('tree', [])
-        return []
+            url = f"/repos/{owner}/{repo}/git/trees/main"
+            if recursive:
+                url += "?recursive=1"
+
+            response = await self.client.get(url)
+            if response.status_code == 200:
+                return response.json().get('tree', [])
+            return []
+        except Exception as e:
+            raise GitHubAPIError(
+                f"Failed to fetch repository tree: {str(e)}", status_code=response.status_code, response_data=response.json())
 
     async def get_languages(self, owner: str, repo: str) -> dict:
         """Get programming languages used in the repo"""
