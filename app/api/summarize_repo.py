@@ -5,6 +5,7 @@ from app.schemas.repo import RepoSummaryRequest
 from app.utils.gather_repo_context import gather_repo_context
 from app.services.llm_services import LLMService
 
+from app.utils.github_api_error import GitHubAPIError
 
 router = APIRouter(prefix="/summarize", tags=["summarize"])
 
@@ -30,5 +31,12 @@ async def summarize_repo_by_url(request: RepoSummaryRequest, github_service: Git
         summary_data = await llm_service.analyze_repository(repo_context)
 
         return summary_data
+    except GitHubAPIError as e:
+        raise HTTPException(status_code=e.status_code or 500, detail={
+            "error": "GitHub API Error",
+            "message": e.message,
+        })
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail={
+                            "error": "Internal Server Error", "message": str(e)})
